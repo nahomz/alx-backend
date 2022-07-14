@@ -1,73 +1,77 @@
-#!/usr/bin/env python3
-"""Least Frequently Used caching module.
+#!/usr/bin/python3
+""" 4. MRU Caching
 """
-from collections import OrderedDict
-
-from base_caching import BaseCaching
+from datetime import datetime
+from collections import defaultdict
+BaseCaching = __import__('base_caching').BaseCaching
 
 
 class LFUCache(BaseCaching):
-    """Represents an object that allows storing and
-    retrieving items from a dictionary with a LFU
-    removal mechanism when the limit is reached.
+    """ BaseCache defines:
+      - overwrite functions 'put' and 'get' for implement
+      MRU caching system
     """
     def __init__(self):
-        """Initializes the cache.
+        """ Initiliaze
         """
         super().__init__()
-        self.cache_data = OrderedDict()
-        self.keys_freq = []
-
-    def __reorder_items(self, mru_key):
-        """Reorders the items in this cache based on the most
-        recently used item.
-        """
-        max_positions = []
-        mru_freq = 0
-        mru_pos = 0
-        ins_pos = 0
-        for i, key_freq in enumerate(self.keys_freq):
-            if key_freq[0] == mru_key:
-                mru_freq = key_freq[1] + 1
-                mru_pos = i
-                break
-            elif len(max_positions) == 0:
-                max_positions.append(i)
-            elif key_freq[1] < self.keys_freq[max_positions[-1]][1]:
-                max_positions.append(i)
-        max_positions.reverse()
-        for pos in max_positions:
-            if self.keys_freq[pos][1] > mru_freq:
-                break
-            ins_pos = pos
-        self.keys_freq.pop(mru_pos)
-        self.keys_freq.insert(ins_pos, [mru_key, mru_freq])
+        self.cache_by_time = {}
+        self.cache_by_frequency_use = defaultdict(int)  # >>> Default value: 0
 
     def put(self, key, item):
-        """Adds an item in the cache.
         """
-        if key is None or item is None:
-            return
-        if key not in self.cache_data:
-            if len(self.cache_data) + 1 > BaseCaching.MAX_ITEMS:
-                lfu_key, _ = self.keys_freq[-1]
-                self.cache_data.pop(lfu_key)
-                self.keys_freq.pop()
-                print("DISCARD:", lfu_key)
+        Assign to the dictionary self.cache_data the item
+        value for the key key
+        If the number of items in self.cache_data is higher
+        that BaseCaching.MAX_ITEMS:
+        - must discard the most recently used item (MRU algorithm)
+        - must print DISCARD: with the key discarded and following by
+        a new line
+        """
+        if key and item:
+            self.cache_by_time[key] = datetime.now()
             self.cache_data[key] = item
-            ins_index = len(self.keys_freq)
-            for i, key_freq in enumerate(self.keys_freq):
-                if key_freq[1] == 0:
-                    ins_index = i
-                    break
-            self.keys_freq.insert(ins_index, [key, 0])
-        else:
-            self.cache_data[key] = item
-            self.__reorder_items(key)
+            self.cache_by_frequency_use[key] += 1
+
+            if len(self.cache_data) > BaseCaching.MAX_ITEMS:
+                # Sorted elements by frequency_used
+                frequency_use_filtered = {}
+                for k, v in self.cache_by_frequency_use.items():
+                    if k != key:
+                        frequency_use_filtered[k] = v
+                keys_by_frequency_used = sorted(frequency_use_filtered,
+                                                key=frequency_use_filtered.get)
+                key_to_delete = keys_by_frequency_used[0]
+
+                # There are more elements with same frequency used count?
+                count = frequency_use_filtered[key_to_delete]
+                posibles_elements_to_discard_dict = {}
+                for k, v in frequency_use_filtered.items():
+                    if v == count:
+                        posibles_elements_to_discard_dict[k] = v
+                if len(posibles_elements_to_discard_dict) > 1:
+                    elements_to_discard_by_time = {}
+                    for k, v in self.cache_by_time.items():
+                        if k in posibles_elements_to_discard_dict.keys():
+                            elements_to_discard_by_time[k] = v
+
+                    elements_by_time = sorted(
+                                          elements_to_discard_by_time,
+                                          key=elements_to_discard_by_time.get)
+                    key_to_delete = elements_by_time[0]
+
+                # Delete element with least_frequency_used
+                del self.cache_by_time[key_to_delete]
+                del self.cache_data[key_to_delete]
+                del self.cache_by_frequency_use[key_to_delete]
+                print('DISCARD: {}'.format(key_to_delete))
 
     def get(self, key):
-        """Retrieves an item by key.
         """
-        if key is not None and key in self.cache_data:
-            self.__reorder_items(key)
-        return self.cache_data.get(key, None)
+            Return the value in self.cache_data linked to key
+        """
+        element = self.cache_data.get(key)
+        if element:
+            self.cache_by_time[key] = datetime.now()
+            self.cache_by_frequency_use[key] += 1
+        return element

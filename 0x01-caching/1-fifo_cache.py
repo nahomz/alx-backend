@@ -1,33 +1,36 @@
-#!/usr/bin/env python3
-"""First-In First-Out caching module.
+#!/usr/bin/python3
 """
-from collections import OrderedDict
-
+Module 1-fifo_cache.py
+"""
 from base_caching import BaseCaching
+from collections import deque
 
 
 class FIFOCache(BaseCaching):
-    """Represents an object that allows storing and
-    retrieving items from a dictionary with a FIFO
-    removal mechanism when the limit is reached.
     """
+    Overrides put() nad self()
+    from parent
+    """
+
     def __init__(self):
-        """Initializes the cache.
-        """
+        """initialize"""
         super().__init__()
-        self.cache_data = OrderedDict()
+        self.queue = deque([])
 
     def put(self, key, item):
-        """Adds an item in the cache.
+        """Add an item in the cache
         """
-        if key is None or item is None:
-            return
-        self.cache_data[key] = item
-        if len(self.cache_data) > BaseCaching.MAX_ITEMS:
-            first_key, _ = self.cache_data.popitem(False)
-            print("DISCARD:", first_key)
+        if key and item:
+            if len(self.cache_data) == BaseCaching.MAX_ITEMS\
+                    and key not in self.queue:
+                del_key = self.queue.popleft()
+                del self.cache_data[del_key]
+                print("DISCARD: {}".format(del_key))
+            self.cache_data[key] = item
+            self.queue.append(key)
 
     def get(self, key):
-        """Retrieves an item by key.
+        """Get an item by key
         """
-        return self.cache_data.get(key, None)
+        value = self.cache_data.get(key)
+        return value
